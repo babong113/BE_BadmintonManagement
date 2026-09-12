@@ -1,32 +1,100 @@
 # DangNhap API
 
-API dang ky/dang nhap bang Spring Boot, Spring Security, JWT, refresh token, RBAC va Flyway cho PostgreSQL.
+API dang ky, dang nhap, JWT, refresh token, RBAC va quen mat khau bang Spring Boot + PostgreSQL. Du an nay co the dung lam module xac thuc rieng cho cac he thong khac, vi du du an quan li san/cau long.
 
-## Tinh Nang Chinh
+## 1. API Nay Dung De Lam Gi
 
-- Dang ky, dang nhap, quen mat khau, dat lai mat khau.
-- Access token JWT ngan han.
-- Refresh token dai han, luu trong DB bang SHA-256 hash.
-- Rotate refresh token moi lan refresh.
-- Phat hien refresh token da revoke bi dung lai va revoke cac refresh token active cua user.
-- Logout mot thiet bi va logout tat ca thiet bi.
-- Endpoint `/api/auth/me` de kiem tra access token va lay thong tin user hien tai.
-- RBAC voi `roles`, `permissions`, `user_roles`, `role_permissions`.
-- PostgreSQL migration bang Flyway.
-- Maven wrapper cuc bo de chay build/test.
+DangNhap API chi nen phu trach cac viec lien quan den tai khoan va phan quyen:
 
-## Yeu Cau
+- Dang ky tai khoan.
+- Dang nhap va tra ve access token + refresh token.
+- Lay thong tin user hien tai qua `/api/auth/me`.
+- Lam moi token qua `/api/auth/refresh-token`.
+- Dang xuat mot thiet bi hoac tat ca thiet bi.
+- Quen mat khau va dat lai mat khau.
+- Luu user, roles, permissions va refresh tokens.
+
+Du an quan li cau long cua ban nen phu trach nghiep vu rieng:
+
+- Quan li san cau long.
+- Quan li khung gio.
+- Quan li dat san.
+- Quan li thanh toan.
+- Quan li lich choi, lich thue san, khach hang, nhan vien.
+
+Hai phan nay noi voi nhau bang JWT. App quan li cau long goi DangNhap API de dang nhap, sau do gui access token khi goi cac API nghiep vu.
+
+## 2. Cau Truc Can Tuan Thu Khi Tich Hop
+
+Khuyen nghi chia he thong thanh 2 nhom API:
+
+```text
+auth-api
+  - /api/auth/register
+  - /api/auth/login
+  - /api/auth/me
+  - /api/auth/refresh-token
+  - /api/auth/logout
+  - /api/auth/logout-all
+  - /api/auth/forgot-password
+  - /api/auth/reset-password
+
+badminton-management-api
+  - /api/courts
+  - /api/time-slots
+  - /api/bookings
+  - /api/payments
+  - /api/customers
+  - /api/staff
+  - /api/admin/...
+```
+
+Moi request den API nghiep vu can gui header:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+API nghiep vu khong nen tu xu ly password. No chi nen:
+
+1. Doc JWT tu header `Authorization`.
+2. Xac thuc chu ky JWT bang cung `JWT_SECRET`.
+3. Lay `userId`, `email`, `roles`, `permissions` tu token hoac goi `/api/auth/me`.
+4. Cho phep/tu choi request dua tren role/permission.
+
+## 3. Yeu Cau Moi Truong
+
+Can cai:
 
 - Java 21 tro len.
 - PostgreSQL.
-- SMTP Gmail neu dung chuc nang quen mat khau.
+- Maven wrapper da co san trong project.
+- SMTP Gmail neu muon dung quen mat khau.
 
-## Cau Hinh `.env`
+Khong can H2 hoac MySQL. Project hien chi dung PostgreSQL.
 
-Tao file `.env` trong thu muc goc:
+## 4. Cau Hinh Database PostgreSQL
+
+Tao database rieng cho auth:
+
+```sql
+CREATE DATABASE dangnhap_auth_api;
+```
+
+Neu dang dung database local nhu hien tai:
 
 ```text
-D:\LogGin\DangNhap_API\.env
+jdbc:postgresql://localhost:42189/test_auth
+```
+
+thi chi can dam bao PostgreSQL dang chay va user/password dung.
+
+## 5. Cau Hinh File `.env`
+
+Tao file `.env` trong thu muc goc project:
+
+```text
+D:\BackEnd\DangNhap_API\.env
 ```
 
 Vi du:
@@ -43,10 +111,10 @@ JWT_SECRET=replace_with_at_least_32_characters_secret_key
 JWT_ACCESS_TOKEN_EXPIRATION=900000
 JWT_REFRESH_TOKEN_EXPIRATION=2592000000
 
-CORS_ALLOWED_ORIGINS=*
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
-AUTH_DEFAULT_ROLE=STUDENT
-AUTH_ALLOWED_ROLES=TUTOR,STUDENT,PARENT,ADMIN
+AUTH_DEFAULT_ROLE=CUSTOMER
+AUTH_ALLOWED_ROLES=CUSTOMER,STAFF,OWNER
 
 FLYWAY_ENABLED=true
 FLYWAY_BASELINE_ON_MIGRATE=false
@@ -55,17 +123,33 @@ MAIL_USERNAME=your_email@gmail.com
 MAIL_PASSWORD=your_gmail_app_password
 ```
 
-Ghi chu:
+Giai thich bien quan trong:
 
-- `JWT_ACCESS_TOKEN_EXPIRATION=900000` la 15 phut.
-- `JWT_REFRESH_TOKEN_EXPIRATION=2592000000` la 30 ngay.
-- `JWT_SECRET` phai co it nhat 32 bytes.
-- `JWT_EXPIRATION` cu van duoc support fallback, nhung nen dung `JWT_ACCESS_TOKEN_EXPIRATION`.
+- `APP_PROFILE=postgres`: bat cau hinh PostgreSQL.
+- `SERVER_PORT=7000`: cong chay auth API.
+- `DB_URL`: JDBC URL cua PostgreSQL, khong them `createDatabaseIfNotExist`.
+- `JWT_SECRET`: khoa ky JWT, phai dai it nhat 32 ky tu.
+- `JWT_ACCESS_TOKEN_EXPIRATION=900000`: access token song 15 phut.
+- `JWT_REFRESH_TOKEN_EXPIRATION=2592000000`: refresh token song 30 ngay.
+- `CORS_ALLOWED_ORIGINS`: domain frontend duoc phep goi API.
+- `AUTH_DEFAULT_ROLE`: role mac dinh khi user dang ky ma khong gui role.
+- `AUTH_ALLOWED_ROLES`: danh sach role duoc phep dang ky qua API.
 
-## Chay API
+Voi du an quan li cau long, nen dung roles nhu sau:
+
+```properties
+AUTH_DEFAULT_ROLE=CUSTOMER
+AUTH_ALLOWED_ROLES=CUSTOMER,STAFF,OWNER
+```
+
+Project hien co migration `V1__create_badminton_auth_schema.sql` tao moi toan bo schema auth va seed san 3 actor nay.
+
+## 6. Chay API
+
+Tai thu muc project:
 
 ```powershell
-cd D:\LogGin\DangNhap_API
+cd D:\BackEnd\DangNhap_API
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -75,113 +159,192 @@ API chay tai:
 http://localhost:7000
 ```
 
-## Chay Test
+Kiem tra nhanh:
 
-```powershell
-.\mvnw.cmd clean test
+```http
+GET http://localhost:7000/api/auth/me
 ```
 
-Ket qua test gan nhat:
+Neu chua gui token, API se tra loi unauthorized. Nhu vay la security dang hoat dong.
+
+## 7. Chay Test
+
+```powershell
+.\mvnw.cmd test
+```
+
+Ket qua mong doi:
 
 ```text
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 6, Failures: 0, Errors: 0
 BUILD SUCCESS
 ```
 
-## Flyway PostgreSQL
+## 8. Cau Truc Database Auth
 
-Migration nam o:
+Flyway migration nam o:
 
 ```text
 src/main/resources/db/migration/postgres/
 ```
 
-Danh sach migration:
+Migration hien tai:
 
-- `V1__create_auth_rbac_tables.sql`: tao bang auth/RBAC co ban.
-- `V2__migrate_user_role_to_user_roles.sql`: migrate cot role cu sang bang `user_roles`.
-- `V3__create_refresh_tokens.sql`: tao bang `refresh_tokens`.
-- `V4__ensure_refresh_tokens_schema.sql`: dam bao bang `refresh_tokens` co du cot/index can thiet cho DB da tao thu cong truoc do.
+- `V1__create_badminton_auth_schema.sql`: tao moi toan bo schema auth, refresh token, RBAC va seed 3 actor `CUSTOMER`, `STAFF`, `OWNER`.
 
-Bang `refresh_tokens` luu:
+Bang chinh:
 
-- `token_hash`: hash SHA-256 cua refresh token.
-- `expires_at`: han refresh token.
-- `revoked_at`: thoi diem token bi thu hoi.
-- `replaced_by_token_id`: token moi thay the token cu khi rotate.
-- `created_by_ip`, `user_agent`: thong tin request tao token.
+- `users`: thong tin tai khoan.
+- `roles`: danh sach vai tro.
+- `permissions`: danh sach quyen chi tiet.
+- `user_roles`: gan user voi role.
+- `role_permissions`: gan role voi permission.
+- `refresh_tokens`: luu refresh token da hash.
 
-## JWT Flow
+Khong luu raw refresh token trong database. API chi luu `token_hash`.
 
-### Dang Ky
+## 9. Actor Cho Du An Quan Li Cau Long
+
+V1 hien tai da seed san 3 actor:
+
+```text
+CUSTOMER
+STAFF
+OWNER
+```
+
+Phan role trong V1:
+
+```sql
+INSERT INTO roles (name, description) VALUES
+    ('CUSTOMER', 'Khach hang dat san cau long'),
+    ('STAFF', 'Nhan vien van hanh san cau long'),
+    ('OWNER', 'Chu san cau long');
+```
+
+Permissions trong V1:
+
+```sql
+INSERT INTO permissions (name, description) VALUES
+    ('court:read', 'Xem danh sach san'),
+    ('court:write', 'Them sua xoa san'),
+    ('time-slot:read', 'Xem khung gio san'),
+    ('time-slot:write', 'Them sua xoa khung gio san'),
+    ('booking:read', 'Xem lich dat san'),
+    ('booking:create', 'Tao don dat san'),
+    ('booking:update', 'Cap nhat don dat san'),
+    ('booking:cancel', 'Huy don dat san'),
+    ('payment:read', 'Xem thanh toan'),
+    ('payment:write', 'Tao hoac cap nhat thanh toan'),
+    ('customer:read', 'Xem thong tin khach hang'),
+    ('staff:manage', 'Quan li nhan vien'),
+    ('report:read', 'Xem bao cao doanh thu va hoat dong');
+```
+
+Permission duoc gan theo logic:
+
+- `CUSTOMER`: xem san, xem khung gio, tao/huy booking, xem thanh toan cua minh.
+- `STAFF`: xem san/khung gio, xem/tao/cap nhat/huy booking, xu ly thanh toan, xem thong tin khach.
+- `OWNER`: co tat ca permissions.
+
+Neu sau nay muon them actor moi, vi du `COACH`, hay tao migration moi `V2__add_coach_role.sql`. Khong sua `V1` neu database da deploy that.
+
+Vi du them role moi trong V2:
+
+```sql
+INSERT INTO roles (name, description)
+VALUES ('COACH', 'Huan luyen vien cau long')
+ON CONFLICT DO NOTHING;
+```
+
+## 10. Flow Dang Ky Cho App Quan Li Cau Long
+
+Frontend goi:
 
 ```http
 POST /api/auth/register
 Content-Type: application/json
 ```
 
+Body:
+
 ```json
 {
-  "email": "student@example.com",
+  "email": "khachhang@example.com",
   "password": "123456",
   "phoneNumber": "0912345678",
   "fullName": "Nguyen Van A",
-  "role": "STUDENT"
+  "role": "CUSTOMER"
 }
 ```
 
-Neu khong gui `role`, API dung `AUTH_DEFAULT_ROLE`.
+Quy tac:
 
-### Dang Nhap
-
-```http
-POST /api/auth/login
-Content-Type: application/json
-```
-
-```json
-{
-  "email": "student@example.com",
-  "password": "123456"
-}
-```
+- `email` bat buoc dung dinh dang email.
+- `password` toi thieu 6 ky tu.
+- `phoneNumber` gom 10 den 11 chu so.
+- `fullName` khong duoc rong.
+- `role` co the bo trong, API se dung `AUTH_DEFAULT_ROLE`.
+- Role gui len phai nam trong `AUTH_ALLOWED_ROLES`.
 
 Response thanh cong:
 
 ```json
 {
   "success": true,
-  "message": "Dang nhap thanh cong",
+  "message": "Dang ky thanh cong",
   "data": {
     "accessToken": "jwt-access-token",
     "refreshToken": "opaque-refresh-token",
     "tokenType": "Bearer",
     "expiresIn": 900,
     "userId": "1",
-    "email": "student@example.com",
+    "email": "khachhang@example.com",
     "fullName": "Nguyen Van A",
-    "roles": ["STUDENT"],
-    "permissions": ["account:read"]
+    "roles": ["CUSTOMER"],
+    "permissions": ["court:read", "booking:create", "booking:cancel"]
   }
 }
 ```
 
-Dung access token:
+Sau khi dang ky thanh cong, frontend nen luu:
+
+- `accessToken`: dung goi API.
+- `refreshToken`: dung xin token moi.
+- `userId`, `email`, `fullName`, `roles`, `permissions`: dung hien thi UI va an/hien menu.
+
+## 11. Flow Dang Nhap
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "email": "khachhang@example.com",
+  "password": "123456"
+}
+```
+
+Frontend nhan `accessToken` va `refreshToken`, sau do moi request den API quan li cau long phai gui:
 
 ```http
 Authorization: Bearer jwt-access-token
 ```
 
-### Lay User Hien Tai
+## 12. Flow Lay User Hien Tai
 
-Dung de test access token va lay thong tin user dang dang nhap.
+Dung de reload trang ma van giu trang thai dang nhap.
 
 ```http
 GET /api/auth/me
 Authorization: Bearer jwt-access-token
 ```
 
-Response thanh cong:
+Response:
 
 ```json
 {
@@ -189,88 +352,89 @@ Response thanh cong:
   "message": "Lay thong tin nguoi dung thanh cong",
   "data": {
     "userId": "1",
-    "email": "student@example.com",
+    "email": "khachhang@example.com",
     "fullName": "Nguyen Van A",
-    "roles": ["STUDENT"],
-    "permissions": ["account:read"]
+    "roles": ["CUSTOMER"],
+    "permissions": ["court:read", "booking:create"]
   }
 }
 ```
 
-### Lam Moi Token
+## 13. Flow Refresh Token
+
+Khi API nghiep vu tra ve `401 Unauthorized` vi access token het han, frontend goi:
 
 ```http
 POST /api/auth/refresh-token
 Content-Type: application/json
 ```
 
+Body:
+
 ```json
 {
   "refreshToken": "opaque-refresh-token"
 }
 ```
 
-Ket qua:
+Thanh cong thi API tra ve cap token moi:
 
-- API tra `accessToken` moi.
-- API tra `refreshToken` moi.
-- Refresh token cu bi set `revoked_at`.
-- Refresh token cu co `replaced_by_token_id` tro toi token moi.
+- `accessToken` moi.
+- `refreshToken` moi.
 
-Neu refresh token cu da bi revoke ma bi dung lai, API se coi la dau hieu reuse va revoke cac refresh token active cua user.
+Quan trong: refresh token duoc rotate. Sau moi lan refresh, phai thay refresh token cu bang refresh token moi.
 
-### Dang Xuat Mot Thiet Bi
+## 14. Flow Dang Xuat
+
+Dang xuat thiet bi hien tai:
 
 ```http
 POST /api/auth/logout
 Content-Type: application/json
 ```
 
+Body:
+
 ```json
 {
   "refreshToken": "opaque-refresh-token"
 }
 ```
 
-Ket qua:
-
-- Refresh token bi set `revoked_at`.
-- Refresh token do khong con dung de refresh duoc.
-
-### Dang Xuat Tat Ca Thiet Bi
-
-Endpoint nay can access token hop le.
+Dang xuat tat ca thiet bi:
 
 ```http
 POST /api/auth/logout-all
 Authorization: Bearer jwt-access-token
 ```
 
-Ket qua:
+Frontend sau khi logout nen xoa `accessToken`, `refreshToken` va thong tin user.
 
-- Tat ca refresh token active cua user bi revoke.
+## 15. Flow Quen Mat Khau
 
-## Quen Mat Khau
-
-### Gui Email Dat Lai Mat Khau
+Gui email reset:
 
 ```http
 POST /api/auth/forgot-password
 Content-Type: application/json
 ```
 
+Body:
+
 ```json
 {
-  "email": "student@example.com"
+  "email": "khachhang@example.com"
 }
 ```
 
-### Dat Lai Mat Khau
+Dat lai mat khau:
 
 ```http
 POST /api/auth/reset-password
 Content-Type: application/json
 ```
+
+Body:
 
 ```json
 {
@@ -280,35 +444,170 @@ Content-Type: application/json
 }
 ```
 
-## Luu Y Bao Mat
+## 16. Cach App Quan Li Cau Long Nen Goi API
 
-- API hien tai chua blacklist access token theo `jti`.
-- Khi logout, refresh token bi revoke ngay, nhung access token cu van co the dung toi khi het han.
-- Vi access token mac dinh chi song 15 phut, cach nay chap nhan duoc cho hien tai.
-- Neu sau nay can logout mat hieu luc ngay lap tuc, hay them bang/cache blacklist access token theo `jti`.
+Tren frontend, nen co mot API client dung chung.
 
-## Kiem Tra DB Refresh Token
+Pseudo code:
+
+```javascript
+async function apiFetch(url, options = {}) {
+  const accessToken = localStorage.getItem("accessToken");
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      ...(options.headers || {})
+    }
+  });
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const refreshToken = localStorage.getItem("refreshToken");
+  const refreshResponse = await fetch("http://localhost:7000/api/auth/refresh-token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken })
+  });
+
+  if (!refreshResponse.ok) {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/login";
+    return refreshResponse;
+  }
+
+  const refreshJson = await refreshResponse.json();
+  localStorage.setItem("accessToken", refreshJson.data.accessToken);
+  localStorage.setItem("refreshToken", refreshJson.data.refreshToken);
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${refreshJson.data.accessToken}`,
+      ...(options.headers || {})
+    }
+  });
+}
+```
+
+## 17. Cach Bao Ve API Nghiep Vu Cau Long
+
+Neu app quan li cau long cung la Spring Boot, no nen cau hinh JWT filter rieng va dung cung `JWT_SECRET`.
+
+Endpoint goi y:
+
+```text
+GET    /api/courts              CUSTOMER, STAFF, OWNER
+POST   /api/courts              OWNER
+PUT    /api/courts/{id}         OWNER
+DELETE /api/courts/{id}         OWNER
+
+GET    /api/bookings            STAFF, OWNER
+POST   /api/bookings            CUSTOMER, STAFF, OWNER
+PATCH  /api/bookings/{id}       STAFF, OWNER
+DELETE /api/bookings/{id}       CUSTOMER owner, STAFF, OWNER
+
+GET    /api/payments            CUSTOMER owner, STAFF, OWNER
+POST   /api/payments            STAFF, OWNER
+```
+
+Trong database nghiep vu, nen luu `auth_user_id` de lien ket voi user ben auth:
 
 ```sql
-select id, user_id, token_hash, expires_at, revoked_at, replaced_by_token_id
-from refresh_tokens
-order by id desc;
+CREATE TABLE bookings (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    auth_user_id BIGINT NOT NULL,
+    court_id BIGINT NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-DB chi nen co `token_hash`, khong nen co raw refresh token.
+Khong nen copy password hay refresh token sang database nghiep vu.
 
-## Merge Code Co Thay Doi Database
+## 18. Quy Tac Migration Bat Buoc
 
-Khi can them bang/cot/index:
+Flyway se bao loi checksum neu sua file migration cu da tung chay. Vi vay:
 
-1. Khong sua migration da chay tren moi truong that.
-2. Tao migration moi tang version.
-3. Uu tien migration trong `src/main/resources/db/migration/postgres`.
+1. Khong sua `V1__create_badminton_auth_schema.sql` neu DB da migrate tren moi truong can giu data.
+2. Moi thay doi schema phai tao file version moi.
+3. Ten file theo mau:
 
-Sau khi pull code moi, chay:
+```text
+V2__add_customer_profile_fields.sql
+V3__add_booking_permissions.sql
+V4__add_coach_role.sql
+```
+
+4. Chay test sau khi them migration:
 
 ```powershell
-.\mvnw.cmd clean test
+.\mvnw.cmd test
 ```
 
-hoac start API de Flyway apply migration con thieu.
+Neu gap loi checksum tren DB dev local va ban chac file migration hien tai la dung:
+
+```powershell
+.\mvnw.cmd org.flywaydb:flyway-maven-plugin:12.4.0:repair "-Dflyway.url=jdbc:postgresql://localhost:42189/test_auth" "-Dflyway.user=postgres" "-Dflyway.password=12345" "-Dflyway.locations=filesystem:src/main/resources/db/migration/postgres"
+```
+
+Chi dung `repair` cho DB dev/local khi hieu ro nguyen nhan.
+
+## 19. Checklist Tich Hop Vao Du An Quan Li Cau Long
+
+Lam theo thu tu:
+
+1. Chay PostgreSQL.
+2. Tao database auth.
+3. Tao `.env` cho DangNhap API.
+4. Cau hinh `AUTH_DEFAULT_ROLE` va `AUTH_ALLOWED_ROLES` theo app cau long.
+5. Kiem tra migration `V1__create_badminton_auth_schema.sql` da co san role/permission cau long.
+6. Chay `.\mvnw.cmd test`.
+7. Chay `.\mvnw.cmd spring-boot:run`.
+8. Frontend goi `/api/auth/register` hoac `/api/auth/login`.
+9. Luu `accessToken` va `refreshToken`.
+10. Moi request den API quan li cau long gui `Authorization: Bearer <accessToken>`.
+11. Khi gap `401`, goi `/api/auth/refresh-token`.
+12. Khi logout, goi `/api/auth/logout` va xoa token o frontend.
+13. Trong DB nghiep vu, chi luu `auth_user_id`, khong luu password/token.
+14. Neu them bang/cot moi, tao migration version moi, khong sua migration cu.
+
+## 20. Luu Y Bao Mat
+
+- Access token mac dinh song 15 phut.
+- Logout chi revoke refresh token. Access token cu van co the dung den khi het han.
+- Refresh token da revoke neu bi dung lai se bi xem la token reuse va API se revoke cac refresh token active cua user.
+- Nen dung HTTPS khi deploy that.
+- Khong commit file `.env`.
+- Khong log raw access token hoac refresh token.
+- Nen gioi han `CORS_ALLOWED_ORIGINS` theo domain frontend that, khong dung `*` tren production.
+
+## 21. Len Production
+
+Khi deploy:
+
+```properties
+APP_PROFILE=postgres
+SERVER_PORT=7000
+DB_URL=jdbc:postgresql://<host>:5432/<database>
+DB_USERNAME=<username>
+DB_PASSWORD=<password>
+JWT_SECRET=<strong-secret-at-least-32-characters>
+CORS_ALLOWED_ORIGINS=https://your-badminton-app.com
+FLYWAY_ENABLED=true
+```
+
+Can dam bao:
+
+- PostgreSQL backup dinh ky.
+- `JWT_SECRET` khong doi tuy tien, vi doi secret se lam token cu mat hieu luc.
+- SMTP Gmail dung app password, khong dung mat khau Gmail chinh.
+- Log khong in thong tin nhay cam.

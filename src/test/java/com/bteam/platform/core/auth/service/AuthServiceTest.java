@@ -55,22 +55,22 @@ class AuthServiceTest {
         AuthService authService = new AuthService(
                 accountStore, mailSender, jwtService, passwordEncoder, rolePolicy, refreshTokenStore);
         RegisterRequest request = RegisterRequest.builder()
-                .email(" Student@Example.com ")
+                .email(" Customer@Example.com ")
                 .password("123456")
                 .phoneNumber("0912345678")
                 .fullName("Nguyen Van A")
                 .build();
 
-        when(accountStore.existsByEmail("student@example.com")).thenReturn(false);
+        when(accountStore.existsByEmail("customer@example.com")).thenReturn(false);
         when(accountStore.existsByPhoneNumber("0912345678")).thenReturn(false);
-        when(rolePolicy.defaultRole()).thenReturn("STUDENT");
-        when(rolePolicy.normalizeRole("STUDENT")).thenReturn(Optional.of("STUDENT"));
-        when(rolePolicy.isRegistrationRoleAllowed("STUDENT")).thenReturn(true);
-        when(rolePolicy.permissionsForRoles(Set.of("STUDENT"))).thenReturn(Set.of("account:read"));
+        when(rolePolicy.defaultRole()).thenReturn("CUSTOMER");
+        when(rolePolicy.normalizeRole("CUSTOMER")).thenReturn(Optional.of("CUSTOMER"));
+        when(rolePolicy.isRegistrationRoleAllowed("CUSTOMER")).thenReturn(true);
+        when(rolePolicy.permissionsForRoles(Set.of("CUSTOMER"))).thenReturn(Set.of("court:read"));
         when(accountStore.save(any(Account.class))).thenAnswer(invocation -> {
             Account account = invocation.getArgument(0);
             account.setId(1L);
-            account.setPermissions(Set.of("account:read"));
+            account.setPermissions(Set.of("court:read"));
             return account;
         });
         when(jwtService.generateToken(any(Account.class))).thenReturn("jwt-token");
@@ -85,9 +85,9 @@ class AuthServiceTest {
 
         assertThat(response.getAccessToken()).isEqualTo("jwt-token");
         assertThat(response.getRefreshToken()).isNotBlank();
-        assertThat(response.getEmail()).isEqualTo("student@example.com");
-        assertThat(response.getRoles()).containsExactly("STUDENT");
-        assertThat(response.getPermissions()).containsExactly("account:read");
+        assertThat(response.getEmail()).isEqualTo("customer@example.com");
+        assertThat(response.getRoles()).containsExactly("CUSTOMER");
+        assertThat(response.getPermissions()).containsExactly("court:read");
     }
 
     @Test
@@ -95,7 +95,7 @@ class AuthServiceTest {
         AuthService authService = new AuthService(
                 accountStore, mailSender, jwtService, passwordEncoder, rolePolicy, refreshTokenStore);
         RegisterRequest request = RegisterRequest.builder()
-                .email("student@example.com")
+                .email("customer@example.com")
                 .password("123456")
                 .phoneNumber("0912345678")
                 .fullName("Nguyen Van A")
@@ -115,16 +115,16 @@ class AuthServiceTest {
                 accountStore, mailSender, jwtService, passwordEncoder, rolePolicy, refreshTokenStore);
         Account account = Account.builder()
                 .id(1L)
-                .email("student@example.com")
+                .email("customer@example.com")
                 .fullName("Nguyen Van A")
-                .roles(Set.of("STUDENT"))
+                .roles(Set.of("CUSTOMER"))
                 .status(AccountStatus.ACTIVE)
                 .passwordHash(passwordEncoder.encode("123456"))
                 .build();
 
-        when(accountStore.findByEmail("student@example.com")).thenReturn(Optional.of(account));
+        when(accountStore.findByEmail("customer@example.com")).thenReturn(Optional.of(account));
         when(accountStore.save(account)).thenReturn(account);
-        when(rolePolicy.permissionsForRoles(Set.of("STUDENT"))).thenReturn(Set.of("account:read"));
+        when(rolePolicy.permissionsForRoles(Set.of("CUSTOMER"))).thenReturn(Set.of("court:read"));
         when(jwtService.generateToken(account)).thenReturn("jwt-token");
         when(jwtService.getAccessTokenExpiration()).thenReturn(900000L);
         when(refreshTokenStore.save(any(RefreshToken.class))).thenAnswer(invocation -> {
@@ -135,7 +135,7 @@ class AuthServiceTest {
 
         AuthResponse response = authService.login(
                 LoginRequest.builder()
-                        .email(" Student@Example.com ")
+                        .email(" Customer@Example.com ")
                         .password("123456")
                         .build(),
                 "127.0.0.1",
@@ -144,7 +144,7 @@ class AuthServiceTest {
 
         assertThat(response.getAccessToken()).isEqualTo("jwt-token");
         assertThat(response.getRefreshToken()).isNotBlank();
-        assertThat(response.getEmail()).isEqualTo("student@example.com");
+        assertThat(response.getEmail()).isEqualTo("customer@example.com");
     }
 
     @Test
@@ -177,19 +177,19 @@ class AuthServiceTest {
                 accountStore, mailSender, jwtService, passwordEncoder, rolePolicy, refreshTokenStore);
         Account account = Account.builder()
                 .id(1L)
-                .email("student@example.com")
+                .email("customer@example.com")
                 .fullName("Nguyen Van A")
-                .roles(Set.of("STUDENT"))
-                .permissions(Set.of("account:read"))
+                .roles(Set.of("CUSTOMER"))
+                .permissions(Set.of("court:read"))
                 .build();
 
-        when(accountStore.findByEmail("student@example.com")).thenReturn(Optional.of(account));
+        when(accountStore.findByEmail("customer@example.com")).thenReturn(Optional.of(account));
 
-        CurrentUserResponse response = authService.currentUser("student@example.com");
+        CurrentUserResponse response = authService.currentUser("customer@example.com");
 
         assertThat(response.getUserId()).isEqualTo("1");
-        assertThat(response.getEmail()).isEqualTo("student@example.com");
-        assertThat(response.getRoles()).containsExactly("STUDENT");
-        assertThat(response.getPermissions()).containsExactly("account:read");
+        assertThat(response.getEmail()).isEqualTo("customer@example.com");
+        assertThat(response.getRoles()).containsExactly("CUSTOMER");
+        assertThat(response.getPermissions()).containsExactly("court:read");
     }
 }

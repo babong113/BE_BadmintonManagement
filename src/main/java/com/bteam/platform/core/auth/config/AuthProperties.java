@@ -11,10 +11,10 @@ public record AuthProperties(
 ) {
     public AuthProperties {
         if (defaultRole == null || defaultRole.isBlank()) {
-            defaultRole = "STUDENT";
+            defaultRole = "CUSTOMER";
         }
         if (allowedRoles == null || allowedRoles.isEmpty()) {
-            allowedRoles = List.of("TUTOR", "STUDENT", "PARENT", "ADMIN");
+            allowedRoles = List.of("CUSTOMER", "STAFF", "OWNER");
         }
     }
 }
