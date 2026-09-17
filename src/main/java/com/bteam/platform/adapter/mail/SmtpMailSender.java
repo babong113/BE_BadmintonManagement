@@ -15,7 +15,6 @@ public class SmtpMailSender implements MailSender {
     @Override
     public void sendResetPasswordEmail(String toEmail, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
 
         message.setTo(toEmail);
         message.setSubject("Dat lai mat khau");
@@ -24,11 +23,11 @@ public class SmtpMailSender implements MailSender {
 
             Ban da yeu cau dat lai mat khau.
 
-            Vui long click vao link sau de dat lai mat khau:
+            Mã đổi lại mật khẩu là: 
             %s
 
-            Link nay se het han sau 30 phut.
-            """.formatted(resetLink));
+            mã này se het han sau 30 phut.
+            """.formatted(token));
 
         mailSender.send(message);
     }
